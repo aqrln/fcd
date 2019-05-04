@@ -3,7 +3,7 @@ import logging
 from clang.cindex import Index, CursorKind
 
 import config
-from tree import Location, Coordinate, UnknownStatement, ASTBuilder
+from tree import Location, Coordinate, ASTBuilder
 
 
 class Parser:
