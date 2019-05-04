@@ -202,6 +202,47 @@ class CStyleLoop(ASTNode):
             node = intermediate_node
         super().append_child(node)
 
+    def compare_same_type(self, other):
+        first_score = self.compare_twice(other, lambda x: x.initializer, lambda x: x.statement)
+        second_score = self.compare_twice(other, lambda x: x.condition, lambda x: x.body)
+        return (first_score + second_score) / 2
+
+
+class CompoundAssignment(ASTNode):
+    def __init__(self, operation, location):
+        super().__init__(location)
+        self.operation = operation
+
+    @property
+    def left(self):
+        return self.nth_child(0)
+
+    @property
+    def right(self):
+        return self.nth_child(1)
+
+    def compare_same_type(self, other):
+        self.compare_twice(other, lambda x: x.left, lambda x: x.right)
+
+    def make_alike(self, other):
+        if isinstance(other, NullStatement):
+            return super().make_alike(other)
+
+        if isinstance(other, Assignment):
+            assignment = Assignment(self.location)
+            operator = BinaryOperation(self.operation, self.location)
+
+            assignment.append_child(self.left)
+            assignment.append_child(operator)
+
+            operator.append_child(self.left)
+            operator.append_child(self.right)
+
+            assignment.weight = 0.7
+            return assignment
+
+        raise CoercionError
+
 
 class ASTBuilder:
     def __init__(self):
@@ -247,6 +288,9 @@ class ASTBuilder:
 
     def open_binary_operation(self, operation, location):
         self.add_nonleaf(BinaryOperation(operation, location))
+
+    def open_compound_assignment(self, operation, location):
+        self.add_nonleaf(CompoundAssignment(operation, location))
 
     def close_node(self):
         self.nodes_stack.pop()

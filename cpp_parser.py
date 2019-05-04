@@ -102,6 +102,8 @@ class FunctionParser:
             self.process_compound_stmt(node)
         elif node.kind == CursorKind.UNARY_OPERATOR:
             self.process_unary_operator(node)
+        elif node.kind == CursorKind.COMPOUND_ASSIGNMENT_OPERATOR:
+            self.process_compound_assignment_operator(node)
         else:
             self.process_unknown(node)
 
@@ -168,6 +170,12 @@ class FunctionParser:
 
     def process_compound_stmt(self, node):
         self.builder.open_block(ClangLocation(node))
+        self.process_children(node)
+        self.builder.close_node()
+
+    def process_compound_assignment_operator(self, node):
+        operation = self.get_operation(node)[:-1]
+        self.builder.open_compound_assignment(operation, ClangLocation(node))
         self.process_children(node)
         self.builder.close_node()
 
