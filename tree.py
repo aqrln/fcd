@@ -25,6 +25,19 @@ class ASTNode:
     def __init__(self, location):
         self.location = location
         self.weight = 1
+        self.children = []
+
+    def append_child(self, node):
+        self.children.append(node)
+
+    def nth_child(self, index):
+        if len(self.children) > index:
+            return self.children[index]
+        else:
+            return NullStatement(self.location)
+
+    def has_children(self):
+        return len(self.children) > 0
 
     def compare(self, other):
         if isinstance(other, type(self)):
@@ -67,6 +80,11 @@ class ASTNode:
         return (left_score + right_score) / 2
 
 
+class RootNode(ASTNode):
+    def compare_same_type(self, other):
+        return 1
+
+
 class NullStatement(ASTNode):
     def compare_same_type(self, other):
         return 1
@@ -90,10 +108,13 @@ class Identifier(ASTNode):
 
 
 class Assignment(ASTNode):
-    def __init__(self, left, right, location):
-        super().__init__(location)
-        self.left = left
-        self.right = right
+    @property
+    def left(self):
+        return self.nth_child(0)
+
+    @property
+    def right(self):
+        return self.nth_child(1)
 
     def compare_same_type(self, other):
         return self.compare_twice(other, lambda x: x.left, lambda x: x.right)
@@ -115,19 +136,22 @@ class Literal(ASTNode):
 
 
 class ReturnStatement(ASTNode):
-    def __init__(self, result, location):
-        super().__init__(location)
-        self.result = result
+    @property
+    def result(self):
+        return self.nth_child(0)
 
     def compare_same_type(self, other):
         return self.result.compare(other.result)
 
 
 class UnaryOperation(ASTNode):
-    def __init__(self, operation, operand, location):
+    def __init__(self, operation, location):
         super().__init__(location)
         self.operation = operation
-        self.operand = operand
+
+    @property
+    def operand(self):
+        return self.nth_child(0)
 
     def compare_same_type(self, other):
         if self.operation != other.operation:
@@ -136,11 +160,17 @@ class UnaryOperation(ASTNode):
 
 
 class BinaryOperation(ASTNode):
-    def __init__(self, operation, left, right, location):
+    def __init__(self, operation, location):
         super().__init__(location)
         self.operation = operation
-        self.left = left
-        self.right = right
+
+    @property
+    def left(self):
+        return self.nth_child(0)
+
+    @property
+    def right(self):
+        return self.nth_child(1)
 
     def compare_same_type(self, other):
         if self.operation != other.operation:
@@ -149,9 +179,62 @@ class BinaryOperation(ASTNode):
 
 
 class CStyleLoop(ASTNode):
-    def __init__(self, initializer, condition, statement, children, location):
-        super().__init__(location)
-        self.initializer = initializer
-        self.condition = condition
-        self.statement = statement
-        self.children = children
+    @property
+    def initializer(self):
+        return self.nth_child(0)
+
+    @property
+    def condition(self):
+        return self.nth_child(1)
+
+    @property
+    def statement(self):
+        return self.nth_child(2)
+
+    @property
+    def body(self):
+        return self.nth_child(3)
+
+
+class ASTBuilder:
+    def __init__(self):
+        self.nodes_stack = []
+
+    @property
+    def product(self):
+        return self.nodes_stack[0]
+
+    @property
+    def current_node(self):
+        return self.nodes_stack[-1]
+
+    def open_root(self, location):
+        self.nodes_stack.append(RootNode(location))
+
+    def add_identifier(self, name, location):
+        self.add_leaf(Identifier(name, location))
+
+    def add_literal(self, value, location):
+        self.add_leaf(Literal(value, location))
+
+    def add_unknown(self, location):
+        self.add_leaf(UnknownStatement(location))
+
+    def add_null(self, location):
+        self.add_leaf(NullStatement(location))
+
+    def open_assignment(self, location):
+        self.add_nonleaf(Assignment(location))
+
+    def open_return(self, location):
+        self.add_nonleaf(ReturnStatement(location))
+
+    def close_node(self):
+        self.nodes_stack.pop()
+
+    def add_leaf(self, node):
+        self.current_node.append_child(node)
+
+    def add_nonleaf(self, node):
+        self.current_node.append_child(node)
+        self.nodes_stack.append(node)

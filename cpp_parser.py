@@ -1,7 +1,9 @@
+import logging
+
 from clang.cindex import Index, CursorKind
 
 import config
-from tree import Location, Coordinate, UnknownStatement
+from tree import Location, Coordinate, UnknownStatement, ASTBuilder
 
 
 class Parser:
@@ -40,17 +42,22 @@ class Parser:
 class FunctionParser:
     def __init__(self, fn_node):
         self.fn_node = fn_node
-        self.statements = []
+        self.builder = ASTBuilder()
+        self.builder.open_root(ClangLocation(fn_node))
 
     @property
     def name(self):
         return self.fn_node.get_usr()
 
+    @property
+    def statements(self):
+        return self.builder.product
+
     def has_statements(self):
-        return len(self.statements) > 0
+        return self.statements.has_children()
 
     def parse(self):
-        print(self.name)
+        logging.debug('%s', self.name)
 
         children = self.fn_node.get_children()
         curly_blocks = [node for node in children if node.kind == CursorKind.COMPOUND_STMT]
@@ -64,44 +71,54 @@ class FunctionParser:
         for node in block.get_children():
             self.process_node(node)
 
-    def traverse(self, node, level=0):
+    def traverse(self, node, level=1):
         indent = '  ' * level
 
         for child in node.get_children():
-            print(indent, child.kind, child.spelling)
+            logging.debug('%s %s %s', indent, child.kind, child.spelling)
             self.traverse(child, level + 1)
 
     def process_node(self, node):
         if node.kind == CursorKind.DECL_STMT:
-            node_parser = DeclarationParser(node)
+            self.process_decl(node)
+        elif node.kind == CursorKind.VAR_DECL:
+            self.process_var_decl(node)
+        elif node.kind == CursorKind.INTEGER_LITERAL:
+            self.process_integer_literal(node)
+        elif node.kind == CursorKind.UNEXPOSED_EXPR:
+            self.process_unexposed_expr(node)
         else:
-            node_parser = UnknownStatementParser(node)
+            self.process_unknown(node)
 
-        node_parser.parse()
-        self.statements.extend(node_parser.statements)
+    def process_children(self, node):
+        for child in node.get_children():
+            self.process_node(child)
 
+    def process_decl(self, node):
+        self.process_children(node)
 
-class StatementParser:
-    def __init__(self, node):
-        self.node = node
-        self.statements = []
+    def process_var_decl(self, node):
+        self.builder.open_assignment(ClangLocation(node))
+        self.builder.add_identifier(node.spelling, ClangLocation(node))
+        self.process_children(node)
+        self.builder.close_node()
 
-    @property
-    def location(self):
-        return ClangLocation(self.node)
+    def process_unknown(self, node):
+        logging.warning('[FunctionParser] unknown %s', node.kind)
+        self.builder.add_unknown(ClangLocation(node))
 
-    def parse(self):
-        pass
+    def process_integer_literal(self, node):
+        self.builder.add_literal(0, ClangLocation(node))  # TODO
 
-
-class DeclarationParser(StatementParser):
-    def parse(self):
-        pass
-
-
-class UnknownStatementParser(StatementParser):
-    def parse(self):
-        return UnknownStatement(self.location)
+    def process_unexposed_expr(self, node):
+        children = node.get_children()
+        if len(children) > 0:
+            if len(children) > 1:
+                logging.warning('[process_unexposed_expr] too many children')
+            self.process_node(children[0])
+        else:
+            logging.warning('[process_unexposed_expr] no children')
+            self.process_unknown(node)
 
 
 class ClangLocation(Location):
