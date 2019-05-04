@@ -6,6 +6,9 @@ class Coordinate:
     def __repr__(self):
         return 'Coordinate({}, {})'.format(repr(self.line), repr(self.column))
 
+    def __str__(self):
+        return '{}:{}'.format(self.line, self.column)
+
 
 class Location:
     def __init__(self, filename, start, end):
@@ -15,6 +18,9 @@ class Location:
 
     def __repr__(self):
         return 'Location({}, {}, {})'.format(repr(self.filename), repr(self.start), repr(self.end))
+
+    def __str__(self):
+        return '{} <{}-{}>'.format(self.filename, self.start, self.end)
 
 
 class CoercionError(Exception):
@@ -99,7 +105,10 @@ class ASTNode:
 
 class CompositeNode(ASTNode):
     def compare_same_type(self, other):
-        return 1
+        score = 0
+        for index, child in enumerate(self.children):
+            score += child.compare(other.nth_child(index))
+        return score / len(self.children)
 
 
 class NullStatement(ASTNode):

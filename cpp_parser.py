@@ -48,7 +48,7 @@ class FunctionParser:
 
     @property
     def name(self):
-        return self.fn_node.get_usr()
+        return self.fn_node.displayname
 
     @property
     def statements(self):

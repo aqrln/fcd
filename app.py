@@ -2,7 +2,6 @@ import logging
 import os
 
 import cpp_parser
-from tree import ASTPrinter
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -22,8 +21,11 @@ def parse_files(root_directory):
 known_samples = parse_files('known_samples')
 to_check = parse_files('to_check')
 
-
-for fn, ast in known_samples.blocks.items():
-    print(fn)
-    ast_printer = ASTPrinter(ast)
-    ast_printer.print()
+for checked_name, checked_ast in to_check.blocks.items():
+    for compared_name, compared_ast in known_samples.blocks.items():
+        similarity = compared_ast.compare(checked_ast)
+        if similarity > 0:
+            print('comparing {} at {}'.format(checked_name, checked_ast.location))
+            print('to        {} at {}'.format(compared_name, compared_ast.location))
+            print('similarity: {}'.format(similarity))
+            print()
