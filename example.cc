@@ -18,7 +18,7 @@ int count(int bound) {
     int result = 0;
     for (int i = 0; i < bound; i++) {
         result += i * 2;
-        if (result == 3) {
+        while (result == 3) {
             continue;
         } else {
             break;

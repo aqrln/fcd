@@ -70,6 +70,16 @@ class ASTNode:
             pseudo_node = NullStatement(self.location)
             pseudo_node.weight = 0.1
             return pseudo_node
+
+        if isinstance(other, CompositeNode):
+            composite = CompositeNode(self.location)
+            composite.append_child(self)
+            composite.weight = 0.9
+            return composite
+
+        return self.make_alike_impl(other)
+
+    def make_alike_impl(self, other):
         raise CoercionError
 
     def compare_twice(self, other, get_left, get_right):
@@ -108,10 +118,7 @@ class Identifier(ASTNode):
         self.name = name
 
     def compare_same_type(self, other):
-        if self.name == other.name:
-            return 1
-        else:
-            return 0
+        return 1
 
 
 class Assignment(ASTNode):
@@ -211,6 +218,24 @@ class CStyleLoop(ASTNode):
         second_score = self.compare_twice(other, lambda x: x.condition, lambda x: x.body)
         return (first_score + second_score) / 2
 
+    def make_alike_impl(self, other):
+        if isinstance(other, WhileStatement):
+            composite = CompositeNode(self.location)
+            body = CompositeNode(self.body.location)
+            while_node = WhileStatement(self.location)
+
+            composite.append_child(self.initializer)
+            while_node.append_child(self.condition)
+            while_node.append_child(body)
+
+            for node in self.body.children:
+                body.append_child(node)
+            body.append_child(self.statement)
+
+            return composite
+
+        raise CoercionError
+
 
 class CompoundAssignment(ASTNode):
     def __init__(self, operation, location):
@@ -228,10 +253,7 @@ class CompoundAssignment(ASTNode):
     def compare_same_type(self, other):
         self.compare_twice(other, lambda x: x.left, lambda x: x.right)
 
-    def make_alike(self, other):
-        if isinstance(other, NullStatement):
-            return super().make_alike(other)
-
+    def make_alike_impl(self, other):
         if isinstance(other, Assignment):
             assignment = Assignment(self.location)
             operator = BinaryOperation(self.operation, self.location)
@@ -279,6 +301,23 @@ class IfStatement(ASTNode):
 
         aux_score = self.false_branch.compare(other.false_branch)
         return (main_score + aux_score) / 2
+
+    def append_child(self, node):
+        node = self.wrap_in_composite_when_n_children(1, node)
+        super().append_child(node)
+
+
+class WhileStatement(ASTNode):
+    @property
+    def condition(self):
+        return self.nth_child(0)
+
+    @property
+    def body(self):
+        return self.nth_child(1)
+
+    def compare_same_type(self, other):
+        return self.compare_twice(other, lambda x: x.condition, lambda x: x.body)
 
     def append_child(self, node):
         node = self.wrap_in_composite_when_n_children(1, node)
@@ -341,6 +380,9 @@ class ASTBuilder:
 
     def open_if_statement(self, location):
         self.add_nonleaf(IfStatement(location))
+
+    def open_while_statement(self, location):
+        self.add_nonleaf(WhileStatement(location))
 
     def close_node(self):
         self.nodes_stack.pop()

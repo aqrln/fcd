@@ -110,6 +110,8 @@ class FunctionParser:
             self.process_break_stmt(node)
         elif node.kind == CursorKind.CONTINUE_STMT:
             self.process_continue_stmt(node)
+        elif node.kind == CursorKind.WHILE_STMT:
+            self.process_while_stmt(node)
         else:
             self.process_unknown(node)
 
@@ -195,6 +197,11 @@ class FunctionParser:
 
     def process_continue_stmt(self, node):
         self.builder.add_continue(ClangLocation(node))
+
+    def process_while_stmt(self, node):
+        self.builder.open_while_statement(ClangLocation(node))
+        self.process_children(node)
+        self.builder.close_node()
 
 
 class NullCursorSentinel:
