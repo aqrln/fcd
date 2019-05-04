@@ -260,7 +260,7 @@ class CompoundAssignment(ASTNode):
         return self.nth_child(1)
 
     def compare_same_type(self, other):
-        self.compare_twice(other, lambda x: x.left, lambda x: x.right)
+        return self.compare_twice(other, lambda x: x.left, lambda x: x.right)
 
     def make_alike_impl(self, other):
         if isinstance(other, Assignment):
