@@ -1,6 +1,7 @@
 import logging
 
-from clang.cindex import Index, CursorKind
+import clang.cindex
+from clang.cindex import Index, CursorKind, Cursor
 
 import config
 from tree import Location, Coordinate, ASTBuilder
@@ -91,6 +92,8 @@ class FunctionParser:
             self.process_return_stmt(node)
         elif node.kind == CursorKind.DECL_REF_EXPR:
             self.process_decl_ref_expr(node)
+        elif node.kind == CursorKind.FOR_STMT:
+            self.process_for_stmt(node)
         else:
             self.process_unknown(node)
 
@@ -124,6 +127,33 @@ class FunctionParser:
 
     def process_decl_ref_expr(self, node):
         self.builder.add_identifier(node.spelling, ClangLocation(node))
+
+    def process_for_stmt(self, node):
+        self.builder.open_cstyle_loop(ClangLocation(node))
+        self.process_children(node)
+        self.builder.close_node()
+
+
+class NullAwareCursorAdapter(Cursor):
+    def get_children(self):
+        def visitor(child, _, current_children):
+            if child == clang.cindex.conf.lib.clang_getNullCursor():
+                current_children.append(None)
+            else:
+                child._tu = self._tu
+                current_children.append(child)
+            return 1
+
+        children = []
+        clang.cindex.conf.lib.clang_visitChildren(self,
+                                                  clang.cindex.callbacks['cursor_visit'](visitor),
+                                                  children)
+        return iter(children)
+
+    @classmethod
+    def from_cursor(cls, cursor):
+        cursor.__class__ = cls
+        return cursor
 
 
 class ClangLocation(Location):

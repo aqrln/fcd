@@ -80,7 +80,7 @@ class ASTNode:
         return (left_score + right_score) / 2
 
 
-class RootNode(ASTNode):
+class CompositeNode(ASTNode):
     def compare_same_type(self, other):
         return 1
 
@@ -209,7 +209,7 @@ class ASTBuilder:
         return self.nodes_stack[-1]
 
     def open_root(self, location):
-        self.nodes_stack.append(RootNode(location))
+        self.nodes_stack.append(CompositeNode(location))
 
     def add_identifier(self, name, location):
         self.add_leaf(Identifier(name, location))
@@ -228,6 +228,12 @@ class ASTBuilder:
 
     def open_return(self, location):
         self.add_nonleaf(ReturnStatement(location))
+
+    def open_block(self, location):
+        self.add_nonleaf(CompositeNode(location))
+
+    def open_cstyle_loop(self, location):
+        self.add_nonleaf(CStyleLoop(location))
 
     def close_node(self):
         self.nodes_stack.pop()
