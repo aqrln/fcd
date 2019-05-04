@@ -24,6 +24,8 @@ int count(int bound) {
             break;
         }
     }
+    char* s = "hello";
+    double x = 3.8;
     return result;
 }
 

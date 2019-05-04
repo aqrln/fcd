@@ -112,6 +112,10 @@ class FunctionParser:
             self.process_continue_stmt(node)
         elif node.kind == CursorKind.WHILE_STMT:
             self.process_while_stmt(node)
+        elif node.kind == CursorKind.STRING_LITERAL:
+            self.process_string_literal(node)
+        elif node.kind == CursorKind.FLOATING_LITERAL:
+            self.process_floating_literal(node)
         else:
             self.process_unknown(node)
 
@@ -202,6 +206,14 @@ class FunctionParser:
         self.builder.open_while_statement(ClangLocation(node))
         self.process_children(node)
         self.builder.close_node()
+
+    def process_string_literal(self, node):
+        token = next(node.get_tokens())
+        self.builder.add_literal(token.spelling, ClangLocation(node))
+
+    def process_floating_literal(self, node):
+        token = next(node.get_tokens())
+        self.builder.add_literal(token.spelling, ClangLocation(node))
 
 
 class NullCursorSentinel:
