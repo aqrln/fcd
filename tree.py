@@ -79,6 +79,13 @@ class ASTNode:
             return 0
         return (left_score + right_score) / 2
 
+    def wrap_in_composite_when_n_children(self, n, node):
+        if len(self.children) >= n and not isinstance(node, CompositeNode):
+            composite = CompositeNode(node.location)
+            composite.append_child(node)
+            return composite
+        return node
+
 
 class CompositeNode(ASTNode):
     def compare_same_type(self, other):
@@ -196,10 +203,7 @@ class CStyleLoop(ASTNode):
         return self.nth_child(3)
 
     def append_child(self, node):
-        if len(self.children) == 3 and not isinstance(node, CompositeNode):
-            intermediate_node = CompositeNode(node.location)
-            intermediate_node.append_child(node)
-            node = intermediate_node
+        node = self.wrap_in_composite_when_n_children(3, node)
         super().append_child(node)
 
     def compare_same_type(self, other):
@@ -244,6 +248,43 @@ class CompoundAssignment(ASTNode):
         raise CoercionError
 
 
+class BreakStatement(ASTNode):
+    def compare_same_type(self, other):
+        return 1
+
+
+class ContinueStatement(ASTNode):
+    def compare_same_type(self, other):
+        return 1
+
+
+class IfStatement(ASTNode):
+    @property
+    def condition(self):
+        return self.nth_child(0)
+
+    @property
+    def true_branch(self):
+        return self.nth_child(1)
+
+    @property
+    def false_branch(self):
+        return self.nth_child(2)
+
+    def compare_same_type(self, other):
+        main_score = self.compare_twice(other, lambda x: x.condition, lambda x: x.true_branch)
+
+        if len(self.children) == len(other.children) == 2:
+            return main_score
+
+        aux_score = self.false_branch.compare(other.false_branch)
+        return (main_score + aux_score) / 2
+
+    def append_child(self, node):
+        node = self.wrap_in_composite_when_n_children(1, node)
+        super().append_child(node)
+
+
 class ASTBuilder:
     def __init__(self):
         self.nodes_stack = []
@@ -271,6 +312,12 @@ class ASTBuilder:
     def add_null(self, location):
         self.add_leaf(NullStatement(location))
 
+    def add_break(self, location):
+        self.add_leaf(BreakStatement(location))
+
+    def add_continue(self, location):
+        self.add_leaf(ContinueStatement(location))
+
     def open_assignment(self, location):
         self.add_nonleaf(Assignment(location))
 
@@ -291,6 +338,9 @@ class ASTBuilder:
 
     def open_compound_assignment(self, operation, location):
         self.add_nonleaf(CompoundAssignment(operation, location))
+
+    def open_if_statement(self, location):
+        self.add_nonleaf(IfStatement(location))
 
     def close_node(self):
         self.nodes_stack.pop()

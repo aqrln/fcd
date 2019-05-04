@@ -20,6 +20,8 @@ int count(int bound) {
         result += i * 2;
         if (result == 3) {
             continue;
+        } else {
+            break;
         }
     }
     return result;

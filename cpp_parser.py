@@ -104,6 +104,12 @@ class FunctionParser:
             self.process_unary_operator(node)
         elif node.kind == CursorKind.COMPOUND_ASSIGNMENT_OPERATOR:
             self.process_compound_assignment_operator(node)
+        elif node.kind == CursorKind.IF_STMT:
+            self.process_if_stmt(node)
+        elif node.kind == CursorKind.BREAK_STMT:
+            self.process_break_stmt(node)
+        elif node.kind == CursorKind.CONTINUE_STMT:
+            self.process_continue_stmt(node)
         else:
             self.process_unknown(node)
 
@@ -178,6 +184,17 @@ class FunctionParser:
         self.builder.open_compound_assignment(operation, ClangLocation(node))
         self.process_children(node)
         self.builder.close_node()
+
+    def process_if_stmt(self, node):
+        self.builder.open_if_statement(ClangLocation(node))
+        self.process_children(node)
+        self.builder.close_node()
+
+    def process_break_stmt(self, node):
+        self.builder.add_break(ClangLocation(node))
+
+    def process_continue_stmt(self, node):
+        self.builder.add_continue(ClangLocation(node))
 
 
 class NullCursorSentinel:
