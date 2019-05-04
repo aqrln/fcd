@@ -30,7 +30,7 @@ class ASTNode:
         if isinstance(other, type(self)):
             return self.compare_same_type_weighted(other)
         try:
-            return self.compare_same_type_weighted(other.make_alike(self))
+            return self.coerce_and_compare(other)
         except CoercionError:
             return 0
 
