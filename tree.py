@@ -235,6 +235,12 @@ class ASTBuilder:
     def open_cstyle_loop(self, location):
         self.add_nonleaf(CStyleLoop(location))
 
+    def open_unary_operation(self, operation, location):
+        self.add_nonleaf(UnaryOperation(operation, location))
+
+    def open_binary_operation(self, operation, location):
+        self.add_nonleaf(BinaryOperation(operation, location))
+
     def close_node(self):
         self.nodes_stack.pop()
 

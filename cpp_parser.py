@@ -96,6 +96,10 @@ class FunctionParser:
             self.process_decl_ref_expr(node)
         elif node.kind == CursorKind.FOR_STMT:
             self.process_for_stmt(node)
+        elif node.kind == CursorKind.BINARY_OPERATOR:
+            self.process_binary_operator(node)
+        elif node.kind == CursorKind.COMPOUND_STMT:
+            self.process_compound_stmt(node)
         else:
             self.process_unknown(node)
 
@@ -120,7 +124,8 @@ class FunctionParser:
         self.builder.add_unknown(ClangLocation(node))
 
     def process_integer_literal(self, node):
-        self.builder.add_literal(0, ClangLocation(node))  # TODO
+        token = next(node.get_tokens())
+        self.builder.add_literal(token.spelling, ClangLocation(node))
 
     def process_unexposed_expr(self, node):
         self.process_children(node)
@@ -137,6 +142,24 @@ class FunctionParser:
         self.builder.open_cstyle_loop(ClangLocation(node))
         self.process_children(NullAwareCursorAdapter.from_cursor(node))
         self.builder.close_node()
+
+    def process_binary_operator(self, node):
+        operation = ''
+
+        children_extents = [child.extent for child in node.get_children()]
+        for token in node.get_tokens():
+            for extent in children_extents:
+                if token.extent in extent or token.extent == extent:
+                    break
+            else:
+                operation = token.spelling
+
+        self.builder.open_binary_operation(operation, ClangLocation(node))
+        self.process_children(node)
+        self.builder.close_node()
+
+    def process_compound_stmt(self, node):
+        self.process_children(node)
 
 
 class NullCursorSentinel:
