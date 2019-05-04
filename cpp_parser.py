@@ -100,6 +100,8 @@ class FunctionParser:
             self.process_binary_operator(node)
         elif node.kind == CursorKind.COMPOUND_STMT:
             self.process_compound_stmt(node)
+        elif node.kind == CursorKind.UNARY_OPERATOR:
+            self.process_unary_operator(node)
         else:
             self.process_unknown(node)
 
@@ -144,22 +146,30 @@ class FunctionParser:
         self.builder.close_node()
 
     def process_binary_operator(self, node):
-        operation = ''
+        self.builder.open_binary_operation(self.get_operation(node), ClangLocation(node))
+        self.process_children(node)
+        self.builder.close_node()
 
+    def process_unary_operator(self, node):
+        self.builder.open_unary_operation(self.get_operation(node), ClangLocation(node))
+        self.process_children(node)
+        self.builder.close_node()
+
+    @staticmethod
+    def get_operation(node):
         children_extents = [child.extent for child in node.get_children()]
         for token in node.get_tokens():
             for extent in children_extents:
                 if token.extent in extent or token.extent == extent:
                     break
             else:
-                operation = token.spelling
-
-        self.builder.open_binary_operation(operation, ClangLocation(node))
-        self.process_children(node)
-        self.builder.close_node()
+                return token.spelling
+        return ''
 
     def process_compound_stmt(self, node):
+        self.builder.open_block(ClangLocation(node))
         self.process_children(node)
+        self.builder.close_node()
 
 
 class NullCursorSentinel:

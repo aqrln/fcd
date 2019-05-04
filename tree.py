@@ -195,6 +195,13 @@ class CStyleLoop(ASTNode):
     def body(self):
         return self.nth_child(3)
 
+    def append_child(self, node):
+        if len(self.children) == 3 and not isinstance(node, CompositeNode):
+            intermediate_node = CompositeNode(node.location)
+            intermediate_node.append_child(node)
+            node = intermediate_node
+        super().append_child(node)
+
 
 class ASTBuilder:
     def __init__(self):
