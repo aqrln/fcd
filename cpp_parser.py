@@ -87,6 +87,10 @@ class FunctionParser:
             self.process_integer_literal(node)
         elif node.kind == CursorKind.UNEXPOSED_EXPR:
             self.process_unexposed_expr(node)
+        elif node.kind == CursorKind.RETURN_STMT:
+            self.process_return_stmt(node)
+        elif node.kind == CursorKind.DECL_REF_EXPR:
+            self.process_decl_ref_expr(node)
         else:
             self.process_unknown(node)
 
@@ -111,14 +115,15 @@ class FunctionParser:
         self.builder.add_literal(0, ClangLocation(node))  # TODO
 
     def process_unexposed_expr(self, node):
-        children = node.get_children()
-        if len(children) > 0:
-            if len(children) > 1:
-                logging.warning('[process_unexposed_expr] too many children')
-            self.process_node(children[0])
-        else:
-            logging.warning('[process_unexposed_expr] no children')
-            self.process_unknown(node)
+        self.process_children(node)
+
+    def process_return_stmt(self, node):
+        self.builder.open_return(ClangLocation(node))
+        self.process_children(node)
+        self.builder.close_node()
+
+    def process_decl_ref_expr(self, node):
+        self.builder.add_identifier(node.spelling, ClangLocation(node))
 
 
 class ClangLocation(Location):

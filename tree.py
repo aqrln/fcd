@@ -238,3 +238,17 @@ class ASTBuilder:
     def add_nonleaf(self, node):
         self.current_node.append_child(node)
         self.nodes_stack.append(node)
+
+
+class ASTPrinter:
+    def __init__(self, root):
+        self.root = root
+
+    def print(self):
+        self.print_node(self.root, 0)
+
+    def print_node(self, node, level):
+        indent = '  ' * level
+        print(indent, node)
+        for child in node.children:
+            self.print_node(child, level + 1)
