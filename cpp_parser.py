@@ -1,7 +1,7 @@
 from clang.cindex import Index, CursorKind
 
 import config
-from tree import Location, Coordinate
+from tree import Location, Coordinate, UnknownStatement
 
 
 class Parser:
@@ -61,12 +61,47 @@ class FunctionParser:
         block = curly_blocks[0]
         self.traverse(block)
 
+        for node in block.get_children():
+            self.process_node(node)
+
     def traverse(self, node, level=0):
         indent = '  ' * level
 
         for child in node.get_children():
             print(indent, child.kind, child.spelling)
             self.traverse(child, level + 1)
+
+    def process_node(self, node):
+        if node.kind == CursorKind.DECL_STMT:
+            node_parser = DeclarationParser(node)
+        else:
+            node_parser = UnknownStatementParser(node)
+
+        node_parser.parse()
+        self.statements.extend(node_parser.statements)
+
+
+class StatementParser:
+    def __init__(self, node):
+        self.node = node
+        self.statements = []
+
+    @property
+    def location(self):
+        return ClangLocation(self.node)
+
+    def parse(self):
+        pass
+
+
+class DeclarationParser(StatementParser):
+    def parse(self):
+        pass
+
+
+class UnknownStatementParser(StatementParser):
+    def parse(self):
+        return UnknownStatement(self.location)
 
 
 class ClangLocation(Location):

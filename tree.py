@@ -72,6 +72,11 @@ class NullStatement(ASTNode):
         return 1
 
 
+class UnknownStatement(ASTNode):
+    def compare_same_type(self, other):
+        return 0
+
+
 class Identifier(ASTNode):
     def __init__(self, name, location):
         super().__init__(location)
