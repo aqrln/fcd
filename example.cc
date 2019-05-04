@@ -16,7 +16,7 @@ void Example::method_two() {
 
 int count(int bound) {
     int result = 0;
-    for (int i = 0; ; i++) {
+    for (int i = 0; i < bound; i++) {
         result += i * 2;
     }
     return result;

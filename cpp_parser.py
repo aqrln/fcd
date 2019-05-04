@@ -80,7 +80,9 @@ class FunctionParser:
             self.traverse(child, level + 1)
 
     def process_node(self, node):
-        if node.kind == CursorKind.DECL_STMT:
+        if isinstance(node, NullCursorSentinel):
+            self.process_null(node)
+        elif node.kind == CursorKind.DECL_STMT:
             self.process_decl(node)
         elif node.kind == CursorKind.VAR_DECL:
             self.process_var_decl(node)
@@ -100,6 +102,9 @@ class FunctionParser:
     def process_children(self, node):
         for child in node.get_children():
             self.process_node(child)
+
+    def process_null(self, node):
+        self.builder.add_null(node.location)
 
     def process_decl(self, node):
         self.process_children(node)
@@ -130,15 +135,36 @@ class FunctionParser:
 
     def process_for_stmt(self, node):
         self.builder.open_cstyle_loop(ClangLocation(node))
-        self.process_children(node)
+        self.process_children(NullAwareCursorAdapter.from_cursor(node))
         self.builder.close_node()
+
+
+class NullCursorSentinel:
+    def __init__(self, parent):
+        self.parent = parent
+        self.left = None
+        self.right = None
+
+    @property
+    def start(self):
+        node = self.left or self.parent
+        return ClangLocation(node).start
+
+    @property
+    def end(self):
+        node = self.right or self.parent
+        return ClangLocation(node).end
+
+    @property
+    def location(self):
+        return Location(self.parent.location.file.name, self.start, self.end)
 
 
 class NullAwareCursorAdapter(Cursor):
     def get_children(self):
         def visitor(child, _, current_children):
             if child == clang.cindex.conf.lib.clang_getNullCursor():
-                current_children.append(None)
+                current_children.append(NullCursorSentinel(self))
             else:
                 child._tu = self._tu
                 current_children.append(child)
@@ -148,7 +174,23 @@ class NullAwareCursorAdapter(Cursor):
         clang.cindex.conf.lib.clang_visitChildren(self,
                                                   clang.cindex.callbacks['cursor_visit'](visitor),
                                                   children)
+
+        self.resolve_null_extents(children, 'left')
+        self.resolve_null_extents(reversed(children), 'right')
+
         return iter(children)
+
+    @staticmethod
+    def resolve_null_extents(cursors, direction):
+        for index, cursor in enumerate(cursors):
+            if not isinstance(cursor, NullCursorSentinel):
+                continue
+
+            if index > 0:
+                sibling = cursors[index - 1]
+                if isinstance(sibling, NullCursorSentinel):
+                    sibling = getattr(sibling, direction)
+                setattr(cursor, direction, sibling)
 
     @classmethod
     def from_cursor(cls, cursor):
